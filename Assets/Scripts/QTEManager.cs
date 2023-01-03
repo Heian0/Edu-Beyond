@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using System;
 
 #if UNITY_2019_4_OR_NEWER && ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -13,8 +15,13 @@ public class QTEManager : MonoBehaviour
     [Header("Configuration")]
     public float slowMotionTimeScale = 0.1f;
 
+    public List<Button> blist = new List<Button>();
+    public Button butPrefab;
+    public Transform fragPanel;	
+    public Transform ansPanel;
+
     [HideInInspector]
-    private bool isEventStarted;
+    public bool isEventStarted;
     private QTEEvent eventData;
     private bool isAllButtonsPressed;
     private bool isFail;
@@ -25,10 +32,12 @@ public class QTEManager : MonoBehaviour
     private float smoothTimeUpdate;
     private float rememberTimeScale;
     private List<QTEKey> keys = new List<QTEKey>();
+    
+    public static System.Random rng = new System.Random();  
 
     public void Start()
     {
-        startEvent(eventData);
+        
     }
 
     protected void Update()
@@ -52,6 +61,13 @@ public class QTEManager : MonoBehaviour
 
     public void startEvent(QTEEvent eventScriptable)
     {
+        List<string> ls = new List<string>();
+        ls.Add("Hey there,");
+        ls.Add("correct me if I'm wrong, but");
+        ls.Add("isn't EduBeyond the greatest company in the world?");
+        
+        //generateQTE(ls, parent);
+    
 #if ENABLE_INPUT_SYSTEM
         if (Keyboard.current == null)
         {
@@ -81,7 +97,7 @@ public class QTEManager : MonoBehaviour
         }
         currentTime = eventData.time;
         smoothTimeUpdate = currentTime;
-        setupGUI();
+        List<Button> blist = setupGUI(ls, fragPanel);
         StartCoroutine(countDown());
     }
 
@@ -115,20 +131,24 @@ public class QTEManager : MonoBehaviour
         isEventStarted = false;
         Time.timeScale = rememberTimeScale;
         var ui = getUI();
+        /*
         if (ui.eventUI != null)
         {
             ui.eventUI.SetActive(false);
         }
+        */
         if (eventData.onEnd != null)
         {
             eventData.onEnd.Invoke();
         }
         if (eventData.onFail != null && isFail)
         {
+            displayFail(eventData.keyboardUI.passText);
             eventData.onFail.Invoke();
         }
         if (eventData.onSuccess != null && isAllButtonsPressed)
         {
+            displayPass(eventData.keyboardUI.passText);
             eventData.onSuccess.Invoke();
         }
         eventData = null;
@@ -201,24 +221,51 @@ public class QTEManager : MonoBehaviour
         }
     }
 
-    protected void setupGUI()
+    protected List<Button> setupGUI(List<string> fragments, Transform parent)
     {
         var ui = getUI();
+        
+        Dictionary<string, int> answerDict = new Dictionary<string, int>();
+    	int count = 0;
+    	foreach (string fragment in fragments)
+    	{
+	    answerDict.Add(fragment, count);
+	    count++;
+    	}
+    	Shuffle(fragments);
+        foreach (string fragment in fragments)
+        {   
+            Button b = Instantiate(butPrefab, new Vector3(370, 130, 0), Quaternion.identity);
+            b.transform.SetParent(parent);
+            b.GetComponentInChildren<Text>().text = fragment;
+            RectTransform bRectTrans = b.GetComponent<RectTransform>();
+	    b.GetComponent<RectTransform>().sizeDelta = bRectTrans.sizeDelta + new Vector2(10.0f, 		    30.0f);
+	    b.GetComponent<AnsButton>().code = answerDict[b.GetComponentInChildren<Text>().text];
+            blist.Add(b);
+        }
+        
+        for (int i = 0; i < blist.Count; i++)
+        {
+            
+        }
 
         if (ui.eventTimerImage != null)
         {
             ui.eventTimerImage.fillAmount = 1;
         }
+        /*
         if (ui.eventText != null)
         {
             ui.eventText.text = "";
             eventData.keys.ForEach(key => ui.eventText.text += key.keyboardKey + "+");
             eventData.keyboardUI.eventText.text = ui.eventText.text.Remove(ui.eventText.text.Length - 1);
         }
+        */
         if (ui.eventUI != null)
         {
             ui.eventUI.SetActive(true);
         }
+        return blist;
     }
 
     protected QTEUI getUI()
@@ -227,4 +274,64 @@ public class QTEManager : MonoBehaviour
 #endif
         return ui;
     }
+    
+    public void displayPass(Text passBox)
+    {
+    	passBox.text = "passed";
+    }
+    
+    public void displayFail(Text passBox)
+    {
+    	passBox.text = "failed";
+    }
+    
+    public List<Button> generateQTE(List<string> fragments, Transform parent)
+    {
+    	Dictionary<string, int> answerDict = new Dictionary<string, int>();
+    	int count = 0;
+    	foreach (string fragment in fragments)
+    	{
+	    answerDict.Add(fragment, count);
+	    count++;
+    	}
+    	Shuffle(fragments);
+        foreach (string fragment in fragments)
+        {   
+            Button b = Instantiate(butPrefab, new Vector3(370, 130, 0), Quaternion.identity);
+            b.transform.SetParent(parent);
+            b.GetComponentInChildren<Text>().text = fragment;
+            RectTransform bRectTrans = b.GetComponent<RectTransform>();
+	    b.GetComponent<RectTransform>().sizeDelta = bRectTrans.sizeDelta + new Vector2(10.0f, 		    30.0f);
+	    b.GetComponent<AnsButton>().code = answerDict[b.GetComponentInChildren<Text>().text];
+	    b.onClick.AddListener(butClicked(b, ansPanel));
+            blist.Add(b);
+        }
+        
+        for (int i = 0; i < blist.Count; i++)
+        {
+            
+        }
+        
+        return blist;
+    }
+    
+    public UnityEngine.Events.UnityAction butClicked(Button b, Transform ansPanel)
+    {
+        b.transform.SetParent(ansPanel);
+        Debug.Log("allah");
+        return null;
+    }
+        
+    public static void Shuffle<T>( IList<T> list)  
+    {  
+        int n = list.Count;  
+        while (n > 1) {  
+        n--;  
+        int k = rng.Next(n + 1);  
+        T value = list[k];  
+        list[k] = list[n];  
+        list[n] = value;  
+        }
+    }  
+
 }

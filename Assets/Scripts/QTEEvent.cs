@@ -44,6 +44,7 @@ public class QTEUI
 {
     public GameObject eventUI;
     public Text eventText;
+    public Text passText;
     public Text eventTimerText;
     public Image eventTimerImage;
 }
